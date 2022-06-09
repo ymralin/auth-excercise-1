@@ -1,7 +1,8 @@
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
-const md5 = require("md5");
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
 
 const app = express();
 
@@ -37,18 +38,23 @@ async function main(){
     });
 
     app.post("/register", function(req, res){
-        const newUser = new User({
-            email: req.body.username,
-            password: md5(req.body.password)
+
+        bcrypt.hash(req.body.password, saltRounds, function(err, hash){
+            const newUser = new User({
+                email: req.body.username,
+                password: hash
+            });
+            newUser.save(function(err){
+                if (err) {
+                    console.log(err);
+                } else {
+                    res.render("secrets");
+                };
+            });
         });
 
-        newUser.save(function(err){
-            if (err) {
-                console.log(err);
-            } else {
-                res.render("secrets");
-            };
-        });
+
+
     });
 
     app.post("/login", function(req, res){
@@ -60,11 +66,11 @@ async function main(){
                 console.log(err);
             }else {
                 if (foundUser) {
-                    if (foundUser.password === md5(password)) {
-                        res.render("secrets");
-                    } else {
-                        console.log("Entered wrong password.");
-                    };
+                    bcrypt.compare(password, foundUser.password, function(err, result){
+                        if (result === true) {
+                            res.render("secrets");
+                        };
+                    });
                 } else {
                     console.log("Entered user not found.");
                 }
@@ -76,8 +82,6 @@ async function main(){
         console.log("Server running on port 3000.")
     });
 
-
-
-}
+};
 
 
